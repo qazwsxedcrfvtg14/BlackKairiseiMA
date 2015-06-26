@@ -18,7 +18,7 @@ string JsonGetObj(string &s,string fnd){
         if(y==string::npos)return "";
         x+=y+1;
         }
-    int a,b,len=s.length();
+    int a=0,b=0,len=s.length();
     for(int i=x+fnd.size()-1;i<len;i++)
         if(s[i]==':')a=i;
         else if(s[i]==','||s[i]=='}'){b=i;break;}
@@ -357,17 +357,17 @@ void OnlineBattleOther(int thread_id=0){
             NetObjGet(net,Obj_Queue,now,head,body);
             NetSend(net,("RoomEnterRequest{\n"+UserID+","+RoomID+","+deck_arthur_type+","+pass+","+auth_token+","+signature+"\n}\n").c_str());
             mtx_net.unlock();
-            Time ti=GetTime(),gist=ti,lt=ti,sever_gt=ti,uat,ept,ltc=0;
+            Time ti=GetTime(),gist=ti,lt=ti,sever_gt=ti,ltc=0;
             int Win=0;
             string target="5";
             int okgo=0;
             int rnd=1,tur=0,auto_go=1;
             int member=0;
-            Time RERRT=INFINITY;
-            Time TCT=INFINITY;
+            Time RERRT=0x7fffffffffffffffLL;
+            Time TCT=0x7fffffffffffffffLL;
             string TCS;
-            int mecnt=0,Lodcnt=1;
-            Time mvt=INFINITY,pongt=INFINITY;
+            int mecnt=0;
+            Time mvt=0x7fffffffffffffffLL,pongt=0x7fffffffffffffffLL;
             bool wtpong=0,brek=0;
             pair<int,int> crid[5][11];
             while(1){
@@ -405,12 +405,12 @@ void OnlineBattleOther(int thread_id=0){
                     puts(("RoomLoadingFinish "+IntToStr(thread_id)).c_str());
                     NetSend(net,"RoomLoadingFinish{\n}\n");
                     NetSend(net,"RoomLoadingFinish{\n}\n");
-                    RERRT=INFINITY;
+                    RERRT=0x7fffffffffffffffLL;
                     }
                 if(gt>=TCT){
                     puts(("CardPlay "+IntToStr(thread_id)+" {"+TCS+"}").c_str());
                     NetSend(net,"CardPlay{\n"+TCS+"\n}\n");
-                    TCT=INFINITY;
+                    TCT=0x7fffffffffffffffLL;
                     }
                 bool nomsg=0;
                 if(Obj.f.find("RoomEnterRequestResult")!=string::npos){
@@ -447,7 +447,7 @@ void OnlineBattleOther(int thread_id=0){
                     puts(("LoadingFinish "+IntToStr(thread_id)).c_str());
                     NetSend(net,"LoadingFinish{\n}\n");
                     Sleep(1000);
-                    RERRT=INFINITY;
+                    RERRT=0x7fffffffffffffffLL;
                     }
                 else if(Obj.f.find("ApiGameStart")!=string::npos){
                     vector<string> ve=StringCut(Obj.s);
@@ -489,7 +489,7 @@ void OnlineBattleOther(int thread_id=0){
                         }
                     }
                 else if(Obj.f.find("ApiUserAttack")!=string::npos){
-                    int addtime=0;
+                    //int addtime=0;
                     /*vector<string> ve=StringCut(Obj.s);
                     int sz=ve.size();
                     for(int i=0;i<sz;i++){
@@ -512,7 +512,7 @@ void OnlineBattleOther(int thread_id=0){
                     //HealHP 61 PlayerID ? HealHP LessHP
                     //Status 6 PlayerID HP HPMax Atk Int Mnd
                     //Buff 62
-                    uat=GetTime();
+                    //uat=GetTime();
                     Sleep(5000);
                     puts(("UserAttackFinish "+IntToStr(thread_id)).c_str());
                     NetSend(net,"UserAttackFinish{\n}\n");
@@ -524,7 +524,7 @@ void OnlineBattleOther(int thread_id=0){
                     //HealHP 61 PlayerID ? HealHP LessHP
                     //Status 6 PlayerID HP HPMax Atk Int Mnd
                     //Buff 62
-                    ept=GetTime();
+                    //ept=GetTime();
                     vector<string> ve=StringCut(Obj.s);
                     int sz=ve.size(),ok70=0,oao=0;
                     for(int i=0;i<sz;i++)
@@ -553,12 +553,11 @@ void OnlineBattleOther(int thread_id=0){
                     vector<string> ve=StringCut(Obj.s);
                     int sz=ve.size();
                     string ar[5]={"0","0","0","0","0"},arr[5]={"0","0","0","0","0"};
-                    int cnt=0,mp=99,ps=0;
+                    int cnt=0;
                     //string gd="0";
                     target="5";
-                    bool pli=0;
-                    pair<int,int>cdc[10];
-                    bool loc[10]={0};
+                    pair<int,int>cdc[15];
+                    bool loc[15]={0};
                     int cnt29=0,cnt25=0;
                     for(int i=0;i<sz;i++){
                         if(ve[i]=="20")i+=3;
@@ -598,7 +597,7 @@ void OnlineBattleOther(int thread_id=0){
                         }
                     //write AI here start
                     int nowcos=tur+2;
-                    for(int i=0;i<cnt;i++){
+                    for(int i=0;i<min(cnt,5);i++){
                         if(cdc[i].s<=nowcos&&!loc[i]){
                             ar[i]=IntToStr(cdc[i].f);
                             arr[i]=target;
@@ -651,7 +650,7 @@ void OnlineBattleOther(int thread_id=0){
                     okgo=1;
                 else if(Obj.f.find("Pong")!=string::npos){
                     wtpong=0;
-                    pongt=INFINITY;
+                    pongt=0x7fffffffffffffffLL;
                     }
                 else if(Obj.f.find("ApiContinuePhaseStart")!=string::npos){
                     break;
@@ -768,7 +767,7 @@ void OnlineBattleSelf(){//Maybe Full Of Bugs
             NetObjGet(net,Obj_Queue,now,head,body);
             NetSend(net,("RoomCreateRequest{\n"+UserID+","+bossid+","+room_type+","+pass+","+is_need_deck_rank+","+deck_rank+","+auth_token+","+signature+"\n}\n").c_str());
             //puts(("RoomCreateRequest{\n"+UserID+","+bossid+","+room_type+","+pass+","+is_need_deck_rank+","+deck_rank+","+auth_token+","+signature+"\n}\n").c_str());
-            Time ti=GetTime(),gist=ti,lt=ti,sever_gt=ti,uat,ept,ready=-1,lct=ti;
+            Time ti=GetTime(),lt=ti,sever_gt=ti,ready=-1;
             int Win=0;
             string target="5";
             int okgo=0;
@@ -826,7 +825,7 @@ void OnlineBattleSelf(){//Maybe Full Of Bugs
                     break;
                     }
                 else if(Obj.f.find("RoomMember")!=string::npos){
-                    gist=gt;
+                    //gist=gt;
                     printf("%s",Obj.s.c_str());
                     vector<string> ve=StringCut(Obj.s);
                     if(StrToInt(ve[1])<0)
@@ -865,17 +864,17 @@ void OnlineBattleSelf(){//Maybe Full Of Bugs
                     NetSend(net,"GameNextFinish{\n}\n");
                     }
                 else if(Obj.f.find("MemberChat")!=string::npos){
-                    gist=GetTime();
+                    //gist=GetTime();
                     }
                 else if(Obj.f.find("ApiUserAttack")!=string::npos){
-                    uat=gt;
+                    //uat=gt;
                     Sleep(5000);
                     puts("UserAttackFinish");
                     NetSend(net,"UserAttackFinish{\n}\n");
                     }
                 else if(Obj.f.find("ApiEnemyPhase")!=string::npos){
                     //printf("%lld\n",gt-uat);
-                    ept=gt;
+                    //ept=gt;
                     vector<string> ve=StringCut(Obj.s);
                     int sz=ve.size(),ok70=0,oao=0;
                     for(int i=0;i<sz;i++)
@@ -1019,7 +1018,7 @@ void PvP(){
 void SoloPlay(){
     //kalisin("/Game/TeamBattleSoloStart");
     }
-int main(int argc, char** argv){
+int main(/*int argc, char** argv*/){
     freopen("stderr","w",stderr);
     login();
     Sleep(2000);
