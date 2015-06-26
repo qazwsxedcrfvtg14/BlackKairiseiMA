@@ -1418,7 +1418,7 @@ namespace Jtol{
             //buf = (pBGR) malloc(_ScreenX * _ScreenY * 4);
             BitBlt(sr_copy, 0, 0, _ScreenX, _ScreenY, sr, 0, 0, SRCCOPY);
             Background_Update_Screen_Lock.write_lock();
-            GetDIBits(sr_copy, bmp_copy, 0, _ScreenY, Background_Update_Screen_Buff, &bi, NULL);
+            GetDIBits(sr_copy, bmp_copy, 0, _ScreenY, Background_Update_Screen_Buff, &bi, 0);
             Background_Update_Screen_Lock.unlock();
             //Pos p=GetPos();
             if(Background_Update_Screen_Off)return;
