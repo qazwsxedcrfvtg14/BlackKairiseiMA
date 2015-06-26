@@ -239,7 +239,7 @@ void SellCard(string crd_nam="20000001",int num=-1){
         chnt++;
         if(chnt==10){
             chnt=0;
-            puts(("{\"uniqids\":["+chs+"]}").c_str());
+            puts(("  {\"uniqids\":["+chs+"]}").c_str());
             kalisin("/Game/CardSell","{\"uniqids\":["+chs+"]}");
             Sleep(3000);
             chs="";
@@ -247,7 +247,7 @@ void SellCard(string crd_nam="20000001",int num=-1){
         }
     if(chnt){
         chnt=0;
-        puts(("{\"uniqids\":["+chs+"]}").c_str());
+        puts(("  {\"uniqids\":["+chs+"]}").c_str());
         kalisin("/Game/CardSell","{\"uniqids\":["+chs+"]}");
         Sleep(3000);
         chs="";
@@ -274,7 +274,7 @@ void SellCardLess(string crd_nam="20000001",int num=0,string crd=""){
         chnt++;
         if(chnt==10){
             chnt=0;
-            puts(("{\"uniqids\":["+chs+"]}").c_str());
+            puts(("  {\"uniqids\":["+chs+"]}").c_str());
             kalisin("/Game/CardSell","{\"uniqids\":["+chs+"]}");
             Sleep(500);
             chs="";
@@ -282,7 +282,7 @@ void SellCardLess(string crd_nam="20000001",int num=0,string crd=""){
         }
     if(chnt){
         chnt=0;
-        puts(("{\"uniqids\":["+chs+"]}").c_str());
+        puts(("  {\"uniqids\":["+chs+"]}").c_str());
         kalisin("/Game/CardSell","{\"uniqids\":["+chs+"]}");
         Sleep(500);
         chs="";
@@ -309,6 +309,7 @@ void AutoSellCard(){
     SellCardLess("20000026",0,crd);
     mtx_card.unlock();
     }
+void ChangeName(string s);   
 string deck_arthur_type,deck_arthur_type_idx,bossid,pass;
 int AutoChaCha;
 string ACC;
@@ -596,7 +597,7 @@ void OnlineBattleOther(int thread_id=0){
                             }
                         }
                     //write AI here start
-                    int nowcos=tur+2;
+                    int nowcos=min(tur+2,10);
                     for(int i=0;i<min(cnt,5);i++){
                         if(cdc[i].s<=nowcos&&!loc[i]){
                             ar[i]=IntToStr(cdc[i].f);
@@ -692,6 +693,17 @@ void OnlineBattleOther(int thread_id=0){
                 puts("pack is full~");
                 break;
                 }
+            int nmcl[6];
+            for(int i=0;i<6;i++) 
+                nmcl[i]=(rand()/100)%16;
+            string new_name="[";
+            for(int i=0;i<6;i++){
+                if(nmcl[i]>=0&&nmcl[i]<=9)new_name+=nmcl[i]+'0';
+                else new_name+=nmcl[i]-10+'A';    
+                }
+            new_name+="]SQUARE ENIX";
+            //new_name+="]SE";
+            ChangeName(new_name);
             //kalisin("/Game/HomeShow");
             //Sleep(1000);
             }
@@ -1038,7 +1050,7 @@ void OnlineBattleSelf(int thread_id=0){//Maybe Full Of Bugs
                             }
                         }
                     //write AI here start
-                    int nowcos=tur+2;
+                    int nowcos=min(tur+2,10);
                     for(int i=0;i<min(cnt,5);i++){
                         if(cdc[i].s<=nowcos&&!loc[i]){
                             ar[i]=IntToStr(cdc[i].f);
@@ -1163,6 +1175,9 @@ void PvP(){
 void SoloPlay(){
     //kalisin("/Game/TeamBattleSoloStart");
     }
+void ChangeName(string s){
+    kalisin("/Game/UserSetName","{\"name\":\""+s+"\"}");
+    }
 int main(/*int argc, char** argv*/){
     freopen("stderr","w",stderr);
     login();
@@ -1176,6 +1191,7 @@ int main(/*int argc, char** argv*/){
         puts("5 Use Item //testing");
         puts("6 Fight Single            //Not Finish");
         puts("7 PvP                     //Not Finish");
+        puts("8 Change Name");
         puts("0 Kalisin Cmd");
         int inp;
         scanf("%d",&inp);
@@ -1241,6 +1257,12 @@ int main(/*int argc, char** argv*/){
             }
         else if(inp==7){
             PvP();
+            }
+        else if(inp==8){
+            string nwm;
+            printf("New Name:");
+            getline(cin,nwm);
+            ChangeName(nwm);
             }
         else if(inp==0){
             string a,b;
