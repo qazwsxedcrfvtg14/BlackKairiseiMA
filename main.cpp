@@ -305,7 +305,7 @@ void AutoSellCard(){
     SellCardLess("10118015",7,crd);
 
     SellCardLess("20000001",0,crd);
-    SellCardLess("20000002",10,crd);
+    SellCardLess("20000002",5,crd);
     SellCardLess("20000026",0,crd);
     mtx_card.unlock();
     }
@@ -414,7 +414,7 @@ void OnlineBattleOther(int thread_id=0){
                     }
                 bool nomsg=0;
                 if(Obj.f.find("RoomEnterRequestResult")!=string::npos){
-                    printf("%s",Obj.s.c_str());
+                    printf("  %s",Obj.s.c_str());
                     if(Obj.s.find("OK")==string::npos){
                         puts("  No OK");
                         brek=1;
@@ -701,7 +701,7 @@ void OnlineBattleOther(int thread_id=0){
         }
     FinishAllThread=1;
     }
-void OnlineBattleSelf(){//Maybe Full Of Bugs
+void OnlineBattleSelf(int thread_id=0){//Maybe Full Of Bugs
 
     queue<char> Obj_Queue;
     int now;
@@ -730,10 +730,21 @@ void OnlineBattleSelf(){//Maybe Full Of Bugs
         }
     else
         deck_rank=="0";
+        
     string mf;
-    int min_fame=90;
-    printf("min fame[90]:");
-    getline(cin,mf);if(mf!="")min_fame=StrToInt(mf);
+    //int min_fame=0;
+    printf("min fame[0]:");
+    getline(cin,mf);if(mf!="")mf="0";//min_fame=StrToInt(mf);
+    
+    string mh;
+    //int min_hp=0;
+    printf("min hp[0]:");
+    getline(cin,mh);if(mh!="")mh="0";//min_hp=StrToInt(mh);
+    
+    string comment;
+    printf("comment[""]:");
+    getline(cin,comment);
+    
     printf("AutoSellBlueQieQie[1]:");
     int AutoChaCha=1;
     string ACC;
@@ -743,54 +754,86 @@ void OnlineBattleSelf(){//Maybe Full Of Bugs
     string gocts;
     int goct=-1;
     getline(cin,gocts);if(gocts!="")goct=StrToInt(gocts);
-    if(AutoChaCha)SellCard();
+    if(AutoChaCha)AutoSellCard();
     for(int gocti=0;gocti!=goct;gocti++){
-        string team=kalisin("/Game/TeamBattleMultiRoomCreate","{\"bossid\":"+bossid+",\"deck_arthur_type\":"+deck_arthur_type+",\"deck_arthur_type_idx\":"+deck_arthur_type_idx+",\"room_type\":"+room_type+",\"pass\":\""+pass+"\",\"is_need_deck_rank\":"+is_need_deck_rank+",\"deck_rank\":"+deck_rank+"}").s;
+        mtx_net.lock();
+        string RoomID;
+        string team=kalisin("/Game/TeamBattleMultiRoomCreate","{\"bossid\":"+bossid+",\"deck_arthur_type\":"+deck_arthur_type+",\"deck_arthur_type_idx\":"+deck_arthur_type_idx+",\"room_type\":"+room_type+",\"pass\":\""+pass+"\",\"is_need_deck_rank\":"+is_need_deck_rank+",\"deck_rank\":"+deck_rank+",\"fame\":"+mf+",\"hp\":"+mh+",\"comment\":\""+comment+"\"}").s;
         //puts(("{\"bossid\":"+bossid+",\"deck_arthur_type\":"+deck_arthur_type+",\"deck_arthur_type_idx\":"+deck_arthur_type_idx+",\"room_type\":"+room_type+",\"pass\":\""+pass+"\",\"is_need_deck_rank\":"+is_need_deck_rank+",\"deck_rank\":"+deck_rank+"}").c_str());
         //puts(team.c_str());
         if(team=="{}"||team==""){
             puts("Error(Maybe no pt)!");
-            Sleep(1000);
+            mtx_net.unlock();
             continue;
             }
         else{
-            string RoomID;
             string host=JsonGetObj(team,"host"),port_s=JsonGetObj(team,"port"),auth_token=JsonGetObj(team,"auth_token"),signature=JsonGetObj(team,"signature");
             printf("host:%s port:%s\n%s\n",host.c_str(),port_s.c_str(),auth_token.c_str());
             int port=StrToInt(port_s);
             Net net=NetCreat(host.c_str(),port);
             if(!net){
+                mtx_net.unlock();
                 puts("Net Error!");
                 continue;
                 }
             while(!Obj_Queue.empty())Obj_Queue.pop();
             NetObjGet(net,Obj_Queue,now,head,body);
             NetSend(net,("RoomCreateRequest{\n"+UserID+","+bossid+","+room_type+","+pass+","+is_need_deck_rank+","+deck_rank+","+auth_token+","+signature+"\n}\n").c_str());
-            //puts(("RoomCreateRequest{\n"+UserID+","+bossid+","+room_type+","+pass+","+is_need_deck_rank+","+deck_rank+","+auth_token+","+signature+"\n}\n").c_str());
-            Time ti=GetTime(),lt=ti,sever_gt=ti,ready=-1;
+            mtx_net.unlock();
+            Time ti=GetTime(),gist=ti,lt=ti,sever_gt=ti,ltc=0,ready=-1;
             int Win=0;
             string target="5";
             int okgo=0;
             int rnd=1,tur=0,auto_go=1,gone=0,went=0;
             int member=0;
+            Time RERRT=0x7fffffffffffffffLL;
+            Time TCT=0x7fffffffffffffffLL;
+            string TCS;
+            int mecnt=0;
+            Time mvt=0x7fffffffffffffffLL,pongt=0x7fffffffffffffffLL;
+            bool wtpong=0,brek=0;
+            pair<int,int> crid[5][11];
             while(1){
                 Time gt=GetTime();
-                if(gt-ti>15000){
+                if(gt-ti>5000){
                     ti=GetTime();
                     NetSend(net,"Ping{\n}\n");
+                    if(!wtpong)
+                        pongt=gt+30000,wtpong=1;
+                    }
+                if(gt>=pongt)break;
+                if(gt-gist>60000&&!okgo){
+                    puts("Wait Too Long!");
+                    break;
                     }
                 if(gt-sever_gt>60000&&!okgo){
                     puts("Wait Too Long!");
                     break;
                     }
-                pair<string,string> Obj=NetObjGet(net,Obj_Queue,now,head,body);
-                if(Obj.f!=""&&Obj.f.find("Pong")==string::npos)
-                    puts(Obj.f.c_str()),lt=gt,sever_gt=gt;
+                pair<string,string> Obj=NetObjGet(net,Obj_Queue,now,head,body);;
+                if(Obj.f!=""&&Obj.f.find("Pong")==string::npos){
+                    mtx.lock();
+                    puts((Obj.f+" "+IntToStr(thread_id)).c_str());
+                    lt=gt,sever_gt=gt;
+                    fprintf(stderr,"%s %d\n%s\n",Obj.f.c_str(),thread_id,Obj.s.c_str());
+                    mtx.unlock();
+                    }
                 if(Obj.f.find("Pong")==string::npos)
                     lt=gt;
                 if(GetTime()-lt>30000){
                     puts("No Respond!");
                     break;
+                    }
+                if(gt>=RERRT){
+                    puts(("RoomLoadingFinish "+IntToStr(thread_id)).c_str());
+                    NetSend(net,"RoomLoadingFinish{\n}\n");
+                    NetSend(net,"RoomLoadingFinish{\n}\n");
+                    RERRT=0x7fffffffffffffffLL;
+                    }
+                if(gt>=TCT){
+                    puts(("CardPlay "+IntToStr(thread_id)+" {"+TCS+"}").c_str());
+                    NetSend(net,"CardPlay{\n"+TCS+"\n}\n");
+                    TCT=0x7fffffffffffffffLL;
                     }
                 if(member==15&&~ready&&gt-ready>12000&&!gone){
                     puts("Go!");
@@ -798,8 +841,6 @@ void OnlineBattleSelf(){//Maybe Full Of Bugs
                     gone=1;
                     }
                 else if(member==15&&~ready&&gt-ready>10000&&!gone&&!went){
-                    puts("RoomLoadingFinish");
-                    NetSend(net,"RoomLoadingFinish{\n}\n");
                     went=1;
                     }
                 else if(member==15&&!~ready){
@@ -808,7 +849,10 @@ void OnlineBattleSelf(){//Maybe Full Of Bugs
                     }
                 else if(member!=15)
                     ready=-1;
+                    
+                bool nomsg=0;
                 if(Obj.f.find("RoomCreateRequestResult")!=string::npos){
+                    printf("  %s",Obj.s.c_str());
                     if(Obj.s.find("OK")==string::npos){
                         puts("No OK");
                         break;
@@ -825,38 +869,51 @@ void OnlineBattleSelf(){//Maybe Full Of Bugs
                     break;
                     }
                 else if(Obj.f.find("RoomMember")!=string::npos){
-                    //gist=gt;
-                    printf("%s",Obj.s.c_str());
+                    gist=gt;
+                    printf("  %s",Obj.s.c_str());
                     vector<string> ve=StringCut(Obj.s);
                     if(StrToInt(ve[1])<0)
                         member&=(15^(1<<(StrToInt(ve[0])-1)));
                     else{
                         member|=(1<<(StrToInt(ve[0])-1));
-                        if(StrToInt(ve[12])<min_fame)
-                            break;
+                        }
+                    mecnt++;
+                    if(mecnt>4){
+                        puts(("RoomLoadingFinish "+IntToStr(thread_id)).c_str());
+                        NetSend(net,"RoomLoadingFinish{\n}\n");
                         }
                     }
                 else if(Obj.f.find("RoomCountdownFinish")!=string::npos){
                     okgo=1;
-                    Sleep(3000);
-                    puts("LoadingFinish");
+                    Sleep(2000);
+                    puts(("LoadingFinish "+IntToStr(thread_id)).c_str());
                     NetSend(net,"LoadingFinish{\n}\n");
                     Sleep(1000);
+                    RERRT=0x7fffffffffffffffLL;
                     }
                 else if(Obj.f.find("ApiGameStart")!=string::npos){
-                    puts("GameStartFinish");
+                    vector<string> ve=StringCut(Obj.s);
+                    int sz=ve.size();
+                    for(int i=0;i<sz;i++){
+                        if(ve[i]=="999")i+=2;
+                        else if(ve[i]=="23"){
+                            crid[StrToInt(ve[i+1])][StrToInt(ve[i+2])]=make_pair(StrToInt(ve[i+3]),StrToInt(ve[i+4]));
+                            i+=4;
+                            }
+                        }
+                    puts(("GameStartFinish "+IntToStr(thread_id)).c_str());
                     Sleep(500);
                     NetSend(net,"GameStartFinish{\n}\n");
                     }
                 else if(Obj.f.find("ApiTurnPhase")!=string::npos){
                     tur++;
-                    printf("R:%d T:%d C:%d\n",rnd,tur,min(tur+2,10));
-                    puts("TurnPhaseFinish");
+                    printf("  R:%d T:%d C:%d\n",rnd,tur,min(tur+2,10));
+                    puts(("TurnPhaseFinish "+IntToStr(thread_id)).c_str());
                     Sleep(500);
                     NetSend(net,"TurnPhaseFinish{\n}\n");
                     }
                 else if(Obj.f.find("GameNextStart")!=string::npos){
-                    puts("GameNextFinish");
+                    puts(("GameNextFinish "+IntToStr(thread_id)).c_str());
                     target="5";
                     Sleep(500);
                     rnd++;
@@ -864,85 +921,144 @@ void OnlineBattleSelf(){//Maybe Full Of Bugs
                     NetSend(net,"GameNextFinish{\n}\n");
                     }
                 else if(Obj.f.find("MemberChat")!=string::npos){
-                    //gist=GetTime();
+                    gist=GetTime();
+                    if(rand()&1&&ti-ltc>2000){
+                        vector<string> ve=StringCut(Obj.s);
+                        Sleep(1000);
+                        puts(("Say "+ve[0]+"!").c_str());
+                        NetSend(net,"Chat{\n"+ve[0]+"\n}\n");
+                        ltc=ti;
+                        }
                     }
                 else if(Obj.f.find("ApiUserAttack")!=string::npos){
-                    //uat=gt;
+                    //int addtime=0;
+                    /*vector<string> ve=StringCut(Obj.s);
+                    int sz=ve.size();
+                    for(int i=0;i<sz;i++){
+                        if(ve[i]=="50"){
+                            printf("  Boss%d Do Something(%d)\n",StrToInt(ve[i+1]),StrToInt(ve[i+2]));
+                            i+=6;
+                            }
+                        else if(ve[i]=="6"){
+                            //printf("  %d Status C\n",StrToInt(ve[i+1]),StrToInt(ve[i+2]));
+                            i+=8;
+                            }
+                        else if(ve[i]=="62"){
+                            printf("  %d Get Some Buff\n",StrToInt(ve[i+1]),StrToInt(ve[i+2]));
+                            i+=10;
+                            }
+                        }*/
+                    //BossT  50 BossID ......
+                    //Throw  51 PlayerType CardPlace CardID CardTo CardLv
+                    //DisHP  60 PlayerID ? DisHP LessHP ? ? ?
+                    //HealHP 61 PlayerID ? HealHP LessHP
+                    //Status 6 PlayerID HP HPMax Atk Int Mnd
+                    //Buff 62
+                    //uat=GetTime();
                     Sleep(5000);
-                    puts("UserAttackFinish");
+                    puts(("UserAttackFinish "+IntToStr(thread_id)).c_str());
                     NetSend(net,"UserAttackFinish{\n}\n");
                     }
                 else if(Obj.f.find("ApiEnemyPhase")!=string::npos){
-                    //printf("%lld\n",gt-uat);
-                    //ept=gt;
+                    //BossT  50 BossID ......
+                    //Throw  51 PlayerType CardPlace CardID CardTo CardLv
+                    //DisHP  60 PlayerID ? DisHP LessHP ? ? ?
+                    //HealHP 61 PlayerID ? HealHP LessHP
+                    //Status 6 PlayerID HP HPMax Atk Int Mnd
+                    //Buff 62
+                    //ept=GetTime();
                     vector<string> ve=StringCut(Obj.s);
                     int sz=ve.size(),ok70=0,oao=0;
                     for(int i=0;i<sz;i++)
-                        if(ve[i]=="60")i+=7;
-                        else if(ve[i]=="62")i+=8;
-                        else if(ve[i]=="72")i+=2;
-                        else if(ve[i]=="71")i+=3;
-                        else if(ve[i]=="3")i+=3;
-                        else if(ve[i]=="50")i+=5;
+                        if(ve[i]=="60")i+=8;
+                        else if(ve[i]=="50")i+=6;
+                        else if(ve[i]=="61")i+=4;
+                        else if(ve[i]=="3")i+=4;
+                        else if(ve[i]=="62")i+=10;
                         else if(ve[i]=="70")ok70=1;
+                        else if(ve[i]=="71")i+=3;
+                        else if(ve[i]=="72")i+=4;
                         else if(ve[i]=="6"){
-                            if(StrToInt(ve[i+1])<=8&&StrToInt(ve[i+1])>=5)
-                                target=max(target,ve[i+1]);
                             if(StrToInt(ve[i+1])>8||StrToInt(ve[i+1])<=0)
                                 oao=1;
                             if(ok70)
-                                printf("%s HP:%s/%s\n",ve[i+1].c_str(),ve[i+2].c_str(),ve[i+3].c_str());
+                                printf("  %s HP:%8d/%-8d Atk:%-7d Int:%-7d Mnd:%-7d\n",ve[i+1].c_str(),StrToInt(ve[i+2]),StrToInt(ve[i+3]),StrToInt(ve[i+4]),StrToInt(ve[i+5]),StrToInt(ve[i+6]));
                             i+=8;
                             }
                     if(oao)puts(Obj.s.c_str());
                     Sleep(3000);
-                    puts("EnemyPhaseFinish");
+                    puts(("EnemyPhaseFinish "+IntToStr(thread_id)).c_str());
                     NetSend(net,"EnemyPhaseFinish{\n}\n");
                     }
                 else if(Obj.f.find("ApiUserPhase")!=string::npos){
-
-                    //printf("%lld\n",gt-uat);
+                    //printf(Obj.s.c_str());
                     vector<string> ve=StringCut(Obj.s);
                     int sz=ve.size();
                     string ar[5]={"0","0","0","0","0"},arr[5]={"0","0","0","0","0"};
-                    int cnt=0,mp=99,ps=0;
-                    string gd="0";
+                    int cnt=0;
+                    //string gd="0";
+                    target="5";
+                    pair<int,int>cdc[15];
+                    bool loc[15]={0};
+                    int cnt29=0,cnt25=0;
                     for(int i=0;i<sz;i++){
                         if(ve[i]=="20")i+=3;
                         else if(ve[i]=="21")i+=3;
                         else if(ve[i]=="24")i+=6;
-                        else if(ve[i]=="25")i+=8;
+                        else if(ve[i]=="29"){
+                            if(ve[i+1]==deck_arthur_type){
+                                if(StrToInt(ve[i+3])){
+                                    //cdc[cnt29].s=99;
+                                    loc[cnt29]=1;
+                                    printf("  Card%02d Locked! Less %d Round.\n",cdc[cnt29].f,StrToInt(ve[i+4]));
+                                    }
+                                cnt29++;
+                                i+=4;
+                                }
+                            }
+                        else if(ve[i]=="25"){
+                            if(ve[i+1]==deck_arthur_type){
+                                printf("  Card%02d Value:%-6d Cost:%-2d\n",StrToInt(ve[i+2]),StrToInt(ve[i+8]),cdc[cnt25].s);
+                                cnt25++;
+                                }
+                            i+=8;
+                            }
                         else if(ve[i]=="27"){
                             if(ve[i+1]==deck_arthur_type){
-                                printf("(%d,%d)",StrToInt(ve[i+2]),StrToInt(ve[i+3]));
-                                int cost=StrToInt(ve[i+3]);
-                                if((cost<=3||(tur>1&&cost<=4)||(tur>2&&cost<=5&&deck_arthur_type!="4"))&&StrToInt(ve[i+2])<mp){
-                                    ps=cnt;
-                                    gd=ve[i+2];
-                                    mp=StrToInt(ve[i+2]);
-                                    }
+                                cdc[cnt]=make_pair(StrToInt(ve[i+2]),StrToInt(ve[i+3]));
                                 cnt++;
                                 }
                             i+=3;
+                            continue;
+                            }
+                        else if(ve[i]=="13"){
+                            if(StrToInt(ve[i+2]))
+                                target=max(target,IntToStr(StrToInt(ve[i+1])));
+                            i+=2;
                             }
                         }
-                    if(target!="0"){
-                        ar[ps]=gd,arr[ps]=target;
+                    //write AI here start
+                    int nowcos=tur+2;
+                    for(int i=0;i<min(cnt,5);i++){
+                        if(cdc[i].s<=nowcos&&!loc[i]){
+                            ar[i]=IntToStr(cdc[i].f);
+                            arr[i]=target;
+                            nowcos-=cdc[i].s;
+                            }
                         }
-                    puts("");
+                    //write AI here end
                     if(auto_go){
-                        string ss;
+                        TCS="";
                         for(int i=0;i<5;i++){
-                            if(i)ss+=",";
-                            ss+=ar[i]+","+arr[i];
+                            if(i)TCS+=",";
+                            TCS+=ar[i]+","+arr[i];
                             }
-                        puts(("Target:"+target).c_str());
-                        Sleep(rand()%4000+3000);
-                        puts(("CardPlay{"+ss+"}").c_str());
-                        target="0";
-                        NetSend(net,"CardPlay{\n"+ss+"\n}\n");
+                        puts(("  Target:"+target).c_str());
+                        target="5";
+                        TCT=GetTime()+rand()%6000+4000;
                         }
                     else{
+                        //Not Finish
                         while(1){
                             break;
                             }
@@ -951,7 +1067,7 @@ void OnlineBattleSelf(){//Maybe Full Of Bugs
                             if(i)ss+=",";
                             ss+=ar[i]+","+arr[i];
                             }
-                        puts(("CardPlay{"+ss+"}").c_str());
+                        puts(("CardPlay "+IntToStr(thread_id)+" {"+ss+"}").c_str());
                         NetSend(net,"CardPlay{\n"+ss+"\n}\n");
                         }
                     }
@@ -961,15 +1077,30 @@ void OnlineBattleSelf(){//Maybe Full Of Bugs
                         Win=1;
                     break;
                     }
-                else if(Obj.f.find("ApiCardPlayR")!=string::npos);
+                else if(Obj.f.find("ApiCardPlayR")!=string::npos){
+                    vector<string> ve=StringCut(Obj.s);
+                    int sz=ve.size();
+                    for(int i=0;i<sz;i++){
+                        if(ve[i]=="22"){
+                            printf("  %d Throw %02d(%d Lv.%d) To %d\n",StrToInt(ve[i+1]),StrToInt(ve[i+2]),crid[StrToInt(ve[i+1])][StrToInt(ve[i+2])].f,crid[StrToInt(ve[i+1])][StrToInt(ve[i+2])].s,StrToInt(ve[i+3]));
+                            i+=3;
+                            }
+                        else if(ve[i]=="25")i+=8;
+                        }
+                    }
                 else if(Obj.f.find("RoomCountdownStart")!=string::npos)
                     okgo=1;
-                else if(Obj.f.find("Pong")!=string::npos);
+                else if(Obj.f.find("Pong")!=string::npos){
+                    wtpong=0;
+                    pongt=0x7fffffffffffffffLL;
+                    }
                 else if(Obj.f.find("ApiContinuePhaseStart")!=string::npos){
+                    break;
                     Sleep(1000);
                     NetSend(net,"ContinuePhaseFinish{\n}\n");
                     }
                 else if(Obj.f.find("ApiContinue")!=string::npos){
+                    break;
                     Sleep(1000);
                     NetSend(net,"ContinueFinish{\n}\n");
                     }
@@ -980,25 +1111,39 @@ void OnlineBattleSelf(){//Maybe Full Of Bugs
                 else if(Obj.f!=""){
                     puts(Obj.s.c_str());
                     }
+                else{
+                    nomsg=1;
+                    }
+                if(!nomsg){
+                    mvt=GetTime()+300000;
+                    }
+                if(GetTime()>=mvt)break;
                 Sleep(1);
                 }
             NetClose(net);
+            if(brek)continue;
             if(Win){
-                puts("Win");
+                puts(("Win "+IntToStr(thread_id)).c_str());
                 kalisin("/Game/TeamBattleResult","{\"roomid\":"+RoomID+"}");
-                puts("Reward Get!");
                 Sleep(2000);
                 if(AutoChaCha)
-                    SellCard();
+                    AutoSellCard();
+                }
+            string home=HomeShow();
+            if(StrToInt(JsonGetObj(home,"card_num"))>=StrToInt(JsonGetObj(home,"card_max"))){
+                puts("pack is full~");
+                break;
                 }
             //kalisin("/Game/HomeShow");
-            HomeShow();
-            Sleep(1000);
+            //Sleep(1000);
             }
         puts("Press E to exit battle");
         if(ChkKey('E'))break;
+        if(FinishAllThread)break;
         }
+    FinishAllThread=1;
     }
+    
 void Walk(){
     kalisin("/Game/ExploreStart","{\"arthur_type\":1,\"deck_idx\":0}");
     printf("Start Walking");
