@@ -185,11 +185,7 @@ void relogin(){
         exit(0);
         }
     }
-pair<string,string> NetObjGet(Net net,int cl=0){
-    static queue<char> Obj_Queue;
-    if(cl)while(Obj_Queue.size())Obj_Queue.pop();
-    static int now=0;
-    static string head,body;
+pair<string,string> NetObjGet(Net net,queue<char> &Obj_Queue,int &now,string &head,string &body){
     const char *buf=NetGet(net);
     for(;buf&&*buf;buf++)
         Obj_Queue.push(*buf);
@@ -290,41 +286,35 @@ void SellCardLess(string crd_nam="20000001",int num=0,string crd=""){
 void AutoSellCard(){
     puts("Selling something~");
     string crd=kalisin("/Game/CardShow").s;
-    /*SellCardLess("10000153",7,crd);
-    SellCardLess("10000185",7,crd);
-    SellCardLess("10118019",7,crd);*/
+
+    SellCardLess("10000153",2,crd);
+    SellCardLess("10118019",7,crd);
+
     SellCardLess("10000061",7,crd);
-    SellCardLess("10000185",7,crd);
+    SellCardLess("10000185",2,crd);
     SellCardLess("10118017",7,crd);
 
-    /*SellCardLess("10001023",7,crd);
+    SellCardLess("10001023",7,crd);
     SellCardLess("10000125",7,crd);
-    SellCardLess("10118015",7,crd);*/
+    SellCardLess("10118015",7,crd);
+
     SellCardLess("20000001",0,crd);
     SellCardLess("20000002",10,crd);
     SellCardLess("20000026",0,crd);
     }
-void OnlineBattleOther(){
-    string deck_arthur_type,deck_arthur_type_idx,bossid,pass;
-    printf("deck_arthur_type:");
-    cin>>deck_arthur_type;
-    printf("deck_arthur_type_idx:");
-    cin>>deck_arthur_type_idx;
-    printf("bossid:");
-    cin>>bossid;
-    getline(cin,pass);
-    printf("pass[\"\"]:");
-    getline(cin,pass);
-    printf("AutoSellCard[0]:");
-    int AutoChaCha=0;
-    string ACC;
-    getline(cin,ACC);
-    if(ACC!="")AutoChaCha=StrToInt(ACC);
-    int notfnd=0;
-    printf("repeat times[-1]:");
-    string gocts;
+string deck_arthur_type,deck_arthur_type_idx,bossid,pass;
+int AutoChaCha;
+string ACC;
+string gocts;
+bool FinishAllThread=0;
+mutex mtx;
+void OnlineBattleOther(int thread_id=0){
+    queue<char> Obj_Queue;
+    int now;
+    string head;
+    string body;
     int goct=-1;
-    getline(cin,gocts);if(gocts!="")goct=StrToInt(gocts);
+    if(gocts!="")goct=StrToInt(gocts);
     if(AutoChaCha)AutoSellCard();
     for(int gocti=0;gocti!=goct;gocti++){
         string teamlist=kalisin("/Game/TeamBattleMultiRoomSearch","{\"deck_arthur_type\":"+deck_arthur_type+",\"deck_arthur_type_idx\":"+deck_arthur_type_idx+",\"bossid\":"+(pass==""?bossid:(string)"0")+",\"pass\":\""+pass+"\"}").s;
@@ -337,9 +327,6 @@ void OnlineBattleOther(){
             notfnd++;*/
             puts("Not Found");
             continue;
-            }
-        else{
-            notfnd=0;
             }
         printf("RoomID:%s\n",RoomID.c_str());
         string team=kalisin("/Game/TeamBattleMultiRoomEnter","{\"roomid\":"+RoomID+",\"deck_arthur_type\":"+deck_arthur_type+",\"deck_arthur_type_idx\":"+deck_arthur_type_idx+"}").s;
@@ -356,7 +343,8 @@ void OnlineBattleOther(){
                 puts("Net Error!");
                 continue;
                 }
-            NetObjGet(net,1);
+            while(!Obj_Queue.empty())Obj_Queue.pop();
+            NetObjGet(net,Obj_Queue,now,head,body);
             NetSend(net,("RoomEnterRequest{\n"+UserID+","+RoomID+","+deck_arthur_type+","+pass+","+auth_token+","+signature+"\n}\n").c_str());
             Time ti=GetTime(),gist=ti,lt=ti,sever_gt=ti,uat,ept,ltc=0;
             int Win=0;
@@ -388,10 +376,13 @@ void OnlineBattleOther(){
                     puts("Wait Too Long!");
                     break;
                     }
-                pair<string,string> Obj=NetObjGet(net);
+                pair<string,string> Obj=NetObjGet(net,Obj_Queue,now,head,body);;
                 if(Obj.f!=""&&Obj.f.find("Pong")==string::npos){
-                    puts(Obj.f.c_str()),lt=gt,sever_gt=gt;
-                    fprintf(stderr,"%s\n%s\n",Obj.f.c_str(),Obj.s.c_str());
+                    mtx.lock();
+                    puts((Obj.f+" "+IntToStr(thread_id)).c_str());
+                    lt=gt,sever_gt=gt;
+                    fprintf(stderr,"%s %d\n%s\n",Obj.f.c_str(),thread_id,Obj.s.c_str());
+                    mtx.unlock();
                     }
                 if(Obj.f.find("Pong")==string::npos)
                     lt=gt;
@@ -400,13 +391,13 @@ void OnlineBattleOther(){
                     break;
                     }
                 if(gt>=RERRT){
-                    puts("RoomLoadingFinish");
+                    puts(("RoomLoadingFinish "+IntToStr(thread_id)).c_str());
                     NetSend(net,"RoomLoadingFinish{\n}\n");
                     NetSend(net,"RoomLoadingFinish{\n}\n");
                     RERRT=INFINITY;
                     }
                 if(gt>=TCT){
-                    puts(("CardPlay {"+TCS+"}").c_str());
+                    puts(("CardPlay "+IntToStr(thread_id)+" {"+TCS+"}").c_str());
                     NetSend(net,"CardPlay{\n"+TCS+"\n}\n");
                     TCT=INFINITY;
                     }
@@ -435,14 +426,14 @@ void OnlineBattleOther(){
                         }
                     mecnt++;
                     if(mecnt>4){
-                        puts("RoomLoadingFinish");
+                        puts(("RoomLoadingFinish "+IntToStr(thread_id)).c_str());
                         NetSend(net,"RoomLoadingFinish{\n}\n");
                         }
                     }
                 else if(Obj.f.find("RoomCountdownFinish")!=string::npos){
                     okgo=1;
                     Sleep(2000);
-                    puts("LoadingFinish");
+                    puts(("LoadingFinish "+IntToStr(thread_id)).c_str());
                     NetSend(net,"LoadingFinish{\n}\n");
                     Sleep(1000);
                     RERRT=INFINITY;
@@ -457,19 +448,19 @@ void OnlineBattleOther(){
                             i+=4;
                             }
                         }
-                    puts("GameStartFinish");
+                    puts(("GameStartFinish "+IntToStr(thread_id)).c_str());
                     Sleep(500);
                     NetSend(net,"GameStartFinish{\n}\n");
                     }
                 else if(Obj.f.find("ApiTurnPhase")!=string::npos){
                     tur++;
                     printf("  R:%d T:%d C:%d\n",rnd,tur,min(tur+2,10));
-                    puts("TurnPhaseFinish");
+                    puts(("TurnPhaseFinish "+IntToStr(thread_id)).c_str());
                     Sleep(500);
                     NetSend(net,"TurnPhaseFinish{\n}\n");
                     }
                 else if(Obj.f.find("GameNextStart")!=string::npos){
-                    puts("GameNextFinish");
+                    puts(("GameNextFinish "+IntToStr(thread_id)).c_str());
                     target="5";
                     Sleep(500);
                     rnd++;
@@ -512,7 +503,7 @@ void OnlineBattleOther(){
                     //Buff 62
                     uat=GetTime();
                     Sleep(5000);
-                    puts("UserAttackFinish");
+                    puts(("UserAttackFinishFinish "+IntToStr(thread_id)).c_str());
                     NetSend(net,"UserAttackFinish{\n}\n");
                     }
                 else if(Obj.f.find("ApiEnemyPhase")!=string::npos){
@@ -543,7 +534,7 @@ void OnlineBattleOther(){
                             }
                     if(oao)puts(Obj.s.c_str());
                     Sleep(3000);
-                    puts("EnemyPhaseFinish");
+                    puts(("EnemyPhaseFinish "+IntToStr(thread_id)).c_str());
                     NetSend(net,"EnemyPhaseFinish{\n}\n");
                     }
                 else if(Obj.f.find("ApiUserPhase")!=string::npos){
@@ -610,7 +601,7 @@ void OnlineBattleOther(){
                             if(i)TCS+=",";
                             TCS+=ar[i]+","+arr[i];
                             }
-                        puts(("Target:"+target).c_str());
+                        puts(("  Target:"+target).c_str());
                         target="5";
                         TCT=GetTime()+rand()%6000+4000;
                         }
@@ -624,7 +615,7 @@ void OnlineBattleOther(){
                             if(i)ss+=",";
                             ss+=ar[i]+","+arr[i];
                             }
-                        puts(("CardPlay{"+ss+"}").c_str());
+                        puts(("CardPlay "+IntToStr(thread_id)+" {"+ss+"}").c_str());
                         NetSend(net,"CardPlay{\n"+ss+"\n}\n");
                         }
                     }
@@ -680,7 +671,7 @@ void OnlineBattleOther(){
             NetClose(net);
             if(brek)continue;
             if(Win){
-                puts("Win");
+                puts(("Win "+IntToStr(thread_id)).c_str());
                 kalisin("/Game/TeamBattleResult","{\"roomid\":"+RoomID+"}");
                 Sleep(2000);
                 if(AutoChaCha)
@@ -696,9 +687,17 @@ void OnlineBattleOther(){
             }
         puts("Press E to exit battle");
         if(ChkKey('E'))break;
+        if(FinishAllThread)break;
         }
+    FinishAllThread=1;
     }
 void OnlineBattleSelf(){//Maybe Full Of Bugs
+
+    queue<char> Obj_Queue;
+    int now;
+    string head;
+    string body;
+
     string deck_arthur_type,deck_arthur_type_idx,bossid,pass,room_type,is_need_deck_rank,deck_rank;
     printf("deck_arthur_type:");
     cin>>deck_arthur_type;
@@ -754,7 +753,8 @@ void OnlineBattleSelf(){//Maybe Full Of Bugs
                 puts("Net Error!");
                 continue;
                 }
-            NetObjGet(net,1);
+            while(!Obj_Queue.empty())Obj_Queue.pop();
+            NetObjGet(net,Obj_Queue,now,head,body);
             NetSend(net,("RoomCreateRequest{\n"+UserID+","+bossid+","+room_type+","+pass+","+is_need_deck_rank+","+deck_rank+","+auth_token+","+signature+"\n}\n").c_str());
             //puts(("RoomCreateRequest{\n"+UserID+","+bossid+","+room_type+","+pass+","+is_need_deck_rank+","+deck_rank+","+auth_token+","+signature+"\n}\n").c_str());
             Time ti=GetTime(),gist=ti,lt=ti,sever_gt=ti,uat,ept,ready=-1,lct=ti;
@@ -773,7 +773,7 @@ void OnlineBattleSelf(){//Maybe Full Of Bugs
                     puts("Wait Too Long!");
                     break;
                     }
-                pair<string,string> Obj=NetObjGet(net);
+                pair<string,string> Obj=NetObjGet(net,Obj_Queue,now,head,body);
                 if(Obj.f!=""&&Obj.f.find("Pong")==string::npos)
                     puts(Obj.f.c_str()),lt=gt,sever_gt=gt;
                 if(Obj.f.find("Pong")==string::npos)
@@ -1024,8 +1024,37 @@ int main(int argc, char** argv){
         puts("0 Kalisin Cmd");
         int inp;
         scanf("%d",&inp);
-        if(inp==1)
-            OnlineBattleOther();
+        if(inp==1){
+            printf("deck_arthur_type:");
+            cin>>deck_arthur_type;
+            printf("deck_arthur_type_idx:");
+            cin>>deck_arthur_type_idx;
+            printf("bossid:");
+            cin>>bossid;
+            getline(cin,pass);
+            printf("pass[\"\"]:");
+            getline(cin,pass);
+            printf("AutoSellCard[0]:");
+            string ACC;
+            getline(cin,ACC);
+            if(ACC!="")AutoChaCha=StrToInt(ACC);
+            else AutoChaCha=0;
+            printf("repeat times[-1]:");
+            string gocts;
+            getline(cin,gocts);
+            FinishAllThread=0;
+            int thread_max=1;
+            printf("Threads[1]:");
+            string tms;
+            getline(cin,tms);
+            if(tms!="")thread_max=StrToInt(tms);
+            Thread thr[thread_max];
+            for(int i=0;i<thread_max;i++)
+                thr[i]=ThreadCreat(OnlineBattleOther,i),Sleep(1000);
+            for(int i=0;i<thread_max;i++)
+                Wait(thr[i]);
+            //OnlineBattleOther();
+            }
         else if(inp==2){
             //puts("Error!");
             OnlineBattleSelf();
