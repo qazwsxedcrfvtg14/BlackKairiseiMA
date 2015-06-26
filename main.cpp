@@ -1,8 +1,11 @@
 #include<bits/stdc++.h>
 #include"Jtol.h"
-
 using namespace Jtol;
 using namespace std;
+
+mutex mtx;
+mutex mtx_net;
+mutex mtx_card;
 int puts(string s){return puts(s.c_str());}
 string Content(string s){
     return "Content-Length: "+IntToStr(s.length())+"\r\n\r\n"+s;
@@ -121,18 +124,20 @@ string clver;
 string token;
 string market;
 string HomeShow(){
-    puts("=====================Home Status=====================");
     string home=kalisin("/Game/HomeShow").s;
+    string item=kalisin("/Game/ItemShow","{\"item_type\":0}").s;
+    mtx.lock();
+    puts("=====================Home Status=====================");
     puts("Name: "+JsonGetObj(home,"name"));
     puts("Level: "+JsonGetObj(home,"level")+"(NextExp:"+JsonGetObj(home,"next_lv_exp")+")");
     puts("AP: "+JsonGetObj(home,"ap")+"/"+JsonGetObj(home,"ap_max")+"("+JsonGetObj(home,"ap_next_sec")+".."+JsonGetObj(home,"ap_heal_sec")+")");
     puts("BP: "+JsonGetObj(home,"bp")+"/"+JsonGetObj(home,"bp_max")+"("+JsonGetObj(home,"bp_next_sec")+".."+JsonGetObj(home,"bp_heal_sec")+")");
     puts("Card: "+JsonGetObj(home,"card_num")+"/"+JsonGetObj(home,"card_max"));
     puts("Gold: "+JsonGetObj(home,"gold"));
-    string item=kalisin("/Game/ItemShow","{\"item_type\":0}").s;
     puts("Rainbow Coin:"+JsonGetObj(item,"itemid\":4000,\"num"));
     puts("Frog Coin:"+JsonGetObj(item,"itemid\":4013,\"num"));
     puts("======================================================");
+    mtx.unlock();
     return home;
     }
 void login(){
@@ -284,6 +289,7 @@ void SellCardLess(string crd_nam="20000001",int num=0,string crd=""){
         }
     }
 void AutoSellCard(){
+    mtx_card.lock();
     puts("Selling something~");
     string crd=kalisin("/Game/CardShow").s;
 
@@ -301,13 +307,13 @@ void AutoSellCard(){
     SellCardLess("20000001",0,crd);
     SellCardLess("20000002",10,crd);
     SellCardLess("20000026",0,crd);
+    mtx_card.unlock();
     }
 string deck_arthur_type,deck_arthur_type_idx,bossid,pass;
 int AutoChaCha;
 string ACC;
 string gocts;
 bool FinishAllThread=0;
-mutex mtx;
 void OnlineBattleOther(int thread_id=0){
     queue<char> Obj_Queue;
     int now;
@@ -317,6 +323,7 @@ void OnlineBattleOther(int thread_id=0){
     if(gocts!="")goct=StrToInt(gocts);
     if(AutoChaCha)AutoSellCard();
     for(int gocti=0;gocti!=goct;gocti++){
+        mtx_net.lock();
         string teamlist=kalisin("/Game/TeamBattleMultiRoomSearch","{\"deck_arthur_type\":"+deck_arthur_type+",\"deck_arthur_type_idx\":"+deck_arthur_type_idx+",\"bossid\":"+(pass==""?bossid:(string)"0")+",\"pass\":\""+pass+"\"}").s;
         string RoomID=JsonGetObj(teamlist,"roomid");
         if(RoomID==""){
@@ -325,12 +332,14 @@ void OnlineBattleOther(int thread_id=0){
                 notfnd=0;
                 }
             notfnd++;*/
+            mtx_net.unlock();
             puts("Not Found");
             continue;
             }
         printf("RoomID:%s\n",RoomID.c_str());
         string team=kalisin("/Game/TeamBattleMultiRoomEnter","{\"roomid\":"+RoomID+",\"deck_arthur_type\":"+deck_arthur_type+",\"deck_arthur_type_idx\":"+deck_arthur_type_idx+"}").s;
         if(team=="{}"||team==""){
+            mtx_net.unlock();
             puts("Too Slow(Or Bag Is Full)");
             continue;
             }
@@ -340,12 +349,14 @@ void OnlineBattleOther(int thread_id=0){
             int port=StrToInt(port_s);
             Net net=NetCreat(host.c_str(),port);
             if(!net){
+                mtx_net.unlock();
                 puts("Net Error!");
                 continue;
                 }
             while(!Obj_Queue.empty())Obj_Queue.pop();
             NetObjGet(net,Obj_Queue,now,head,body);
             NetSend(net,("RoomEnterRequest{\n"+UserID+","+RoomID+","+deck_arthur_type+","+pass+","+auth_token+","+signature+"\n}\n").c_str());
+            mtx_net.unlock();
             Time ti=GetTime(),gist=ti,lt=ti,sever_gt=ti,uat,ept,ltc=0;
             int Win=0;
             string target="5";
@@ -503,7 +514,7 @@ void OnlineBattleOther(int thread_id=0){
                     //Buff 62
                     uat=GetTime();
                     Sleep(5000);
-                    puts(("UserAttackFinishFinish "+IntToStr(thread_id)).c_str());
+                    puts(("UserAttackFinish "+IntToStr(thread_id)).c_str());
                     NetSend(net,"UserAttackFinish{\n}\n");
                     }
                 else if(Obj.f.find("ApiEnemyPhase")!=string::npos){
